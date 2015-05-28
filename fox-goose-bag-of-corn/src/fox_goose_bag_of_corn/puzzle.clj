@@ -6,6 +6,8 @@
                  [:boat]
                  []]])
 
+(def start-state (first start-pos))
+
 (defn goal? [[left-bank river right-bank]]
   (and (empty? left-bank)
        (= #{:boat} (set river))
@@ -117,68 +119,6 @@
   ;; Not sold on this approach.
   (eval action))
 
-;; (defn step
-;;   ([{:keys [pending state goal paths]
-;;      :or {[] :pending, [] :paths, false goal}}]
-;;      ;; Iteratively explore all valid actions
-;;      ;; with all valid arguments until goal is reached.
-;;      (cond
-;;       (goal? state) {:pending []
-;;                      :state state
-;;                      :goal true
-;;                      :paths (conj paths state)}
-;;       (empty? pending) (let [actions (actions-from state)]
-;;                          {:pending (apply conj pending actions)
-;;                           :state state
-;;                           :goal false
-;;                           :paths (conj paths state)})
-;;       :else (let [action (first pending)
-;;                   others (vec (rest pending))
-;;                   new-state (act action)]
-;;               {:pending others
-;;                :state new-state
-;;                :goal false
-;;                :paths (conj paths state)}))))
-
-;; (defn step
-;;   [{:keys [pending path done]
-;;     :as args
-;;     :or {pending [], path [], done false}}]
-;;   ;; Iteratively explore all valid actions
-;;   ;; with all valid arguments until goal is reached.
-;;   (if (empty? pending)
-;;     (assoc args :done true)
-;;     (let [action (first pending)
-;;           others (vec (rest pending))
-;;           new-state (act action)
-;;           new-actions (actions-from new-state)]
-;;       {:pending (into others new-actions)
-;;        :done false
-;;        :path (conj path new-state)})))
-
-
-;; ;; The order of states in path is incorrect.
-;; ;; Maybe include the current path for each action in pending.
-;; ;; Likely need to carry around state this way too.
-;; ;; Then, when popping the next pending, the path considered is
-;; ;; the path hitchhiking with that pending action.
-;; (defn step
-;;   [{:keys [pending state path done]
-;;     :as args
-;;     :or {pending [], path [], done false}}]
-;;   ;; Iteratively explore all valid actions
-;;   ;; with all valid arguments until goal is reached.
-;;   (if (empty? pending)
-;;     (assoc args :done true) ;; Incorrect for bootstrapping.
-;;     (let [action (first pending)
-;;           others (vec (rest pending))
-;;           new-state (act action)
-;;           new-actions (actions-from state)]
-;;       {:pending (into others new-actions)
-;;        :state new-state
-;;        :done false
-;;        :path (conj path state)})))
-
 (defn step
   [queue]
   ;; Iteratively explore all valid actions
@@ -189,17 +129,19 @@
         actions (actions-from state)
         new-states (map act actions)
         new-path (conj path state)]
-    (into remaining
-          (->> new-states
-               (map (fn [s] {:state s, :path new-path}))
-               vec))))
+    (if (fail? state)
+      remaining
+      (into remaining
+            (->> new-states
+                 (remove fail?)
+                 (map (fn [s] {:state s, :path new-path}))
+                 vec)))))
 
 (defn river-crossing-plan []
-  (let [[start-state] start-pos]
-    (->> [{:state start-state}]
-         (iterate step)
-         (remove (fn [{state :state}] (fail? state)))
-         (take 10000)
-         (filter (fn [{state :state}] (goal? state)))
-         first
-         :path)))
+  (->> [{:state start-state}]
+       (iterate step)
+       ;; (remove (fn [{state :state}] (fail? state)))
+       (take 100000)
+       (filter (fn [{state :state}] (goal? state)))
+       first
+       :path))
