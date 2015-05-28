@@ -28,6 +28,10 @@
 (defn goose-alone-with-corn? [state]
   (some goose-alone-with-corn-at? state))
 
+(defn fail? [state]
+  (or (fox-alone-with-goose? state)
+      (goose-alone-with-corn-at? state)))
+
 (defn on-left-bank? [[left-bank _ _]]
   (:you (set left-bank)))
 
@@ -89,33 +93,113 @@
 (defn haul-actions-from [where [left-bank river right-bank :as state]]
   (case where
     :left-bank (let [hs (haulables-at left-bank)]
-                 (mapv (fn [h] (list haul->left-bank->boat [h state])) hs))
+                 (mapv (fn [h] (list 'haul->left-bank->boat h state)) hs))
     :right-bank (let [hs (haulables-at right-bank)]
-                  (mapv (fn [h] (list haul->right-bank->boat [h state])) hs))
+                  (mapv (fn [h] (list 'haul->right-bank->boat h state)) hs))
     :river (let [hs (haulables-at river)]
              (vec
-              (concat (mapv (fn [h] (list haul->boat->left-bank [h state])) hs)
-                      (mapv (fn [h] (list haul->boat->right-bank [h state])) hs))))
+              (concat (mapv (fn [h] (list 'haul->boat->left-bank h state)) hs)
+                      (mapv (fn [h] (list 'haul->boat->right-bank h state)) hs))))
     (throw (IllegalArgumentException. (str "Bad where: " where)))))
 
 (defn actions-from [[left-bank river right-bank :as state]]
   (cond
    (on-left-bank? state) (conj (haul-actions-from :left-bank state)
-                               '(move->left-bank->boat []))
+                               (list 'move->left-bank->boat state))
    (on-right-bank? state) (conj (haul-actions-from :right-bank state)
-                                '(move->right-bank->boat []))
+                                (list 'move->right-bank->boat state))
    (on-boat? state) (conj (haul-actions-from :river state)
-                          '(move->boat->left-bank [])
-                          '(move->boat->right-bank []))
+                          (list 'move->boat->left-bank state)
+                          (list 'move->boat->right-bank state))
    :else (throw (IllegalArgumentException. "Missing :you"))))
 
-(defn act [[action-fn action-args]]
-  (apply action-fn action-args))
+(defn act [action]
+  ;; Not sold on this approach.
+  (eval action))
 
-(defn next-state [[left-bank river right-bank :as state]]
+;; (defn step
+;;   ([{:keys [pending state goal paths]
+;;      :or {[] :pending, [] :paths, false goal}}]
+;;      ;; Iteratively explore all valid actions
+;;      ;; with all valid arguments until goal is reached.
+;;      (cond
+;;       (goal? state) {:pending []
+;;                      :state state
+;;                      :goal true
+;;                      :paths (conj paths state)}
+;;       (empty? pending) (let [actions (actions-from state)]
+;;                          {:pending (apply conj pending actions)
+;;                           :state state
+;;                           :goal false
+;;                           :paths (conj paths state)})
+;;       :else (let [action (first pending)
+;;                   others (vec (rest pending))
+;;                   new-state (act action)]
+;;               {:pending others
+;;                :state new-state
+;;                :goal false
+;;                :paths (conj paths state)}))))
+
+;; (defn step
+;;   [{:keys [pending path done]
+;;     :as args
+;;     :or {pending [], path [], done false}}]
+;;   ;; Iteratively explore all valid actions
+;;   ;; with all valid arguments until goal is reached.
+;;   (if (empty? pending)
+;;     (assoc args :done true)
+;;     (let [action (first pending)
+;;           others (vec (rest pending))
+;;           new-state (act action)
+;;           new-actions (actions-from new-state)]
+;;       {:pending (into others new-actions)
+;;        :done false
+;;        :path (conj path new-state)})))
+
+
+;; ;; The order of states in path is incorrect.
+;; ;; Maybe include the current path for each action in pending.
+;; ;; Likely need to carry around state this way too.
+;; ;; Then, when popping the next pending, the path considered is
+;; ;; the path hitchhiking with that pending action.
+;; (defn step
+;;   [{:keys [pending state path done]
+;;     :as args
+;;     :or {pending [], path [], done false}}]
+;;   ;; Iteratively explore all valid actions
+;;   ;; with all valid arguments until goal is reached.
+;;   (if (empty? pending)
+;;     (assoc args :done true) ;; Incorrect for bootstrapping.
+;;     (let [action (first pending)
+;;           others (vec (rest pending))
+;;           new-state (act action)
+;;           new-actions (actions-from state)]
+;;       {:pending (into others new-actions)
+;;        :state new-state
+;;        :done false
+;;        :path (conj path state)})))
+
+(defn step
+  [queue]
   ;; Iteratively explore all valid actions
   ;; with all valid arguments until goal is reached.
-  state)
+  (let [{:keys [state path] :or {path []}} (first queue)
+        ;; _ (clojure.pprint/pprint state)
+        remaining (vec (rest queue))
+        actions (actions-from state)
+        new-states (map act actions)
+        new-path (conj path state)]
+    (into remaining
+          (->> new-states
+               (map (fn [s] {:state s, :path new-path}))
+               vec))))
 
 (defn river-crossing-plan []
-  start-pos)
+  (let [[start-state] start-pos]
+    (->> [{:state start-state}]
+         (iterate step)
+         (remove (fn [{state :state}] (fail? state)))
+         (take 10000)
+         (filter (fn [{state :state}] (goal? state)))
+         first
+         :path)))
