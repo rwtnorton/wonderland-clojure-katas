@@ -58,29 +58,27 @@
   (case where
     :left-bank (let [hs (haulables-at left-bank)]
                  (mapv
-                  (fn [h]
-                    (list 'haul->left-bank->boat h state)) hs))
+                  (fn [h] #(haul->left-bank->boat h state)) hs))
     :right-bank (let [hs (haulables-at right-bank)]
                   (mapv
-                   (fn [h]
-                     (list 'haul->right-bank->boat h state)) hs))
+                   (fn [h] #(haul->right-bank->boat h state)) hs))
     :river (let [hs (haulables-at river)]
              (vec
-              (concat (mapv
-                       (fn [h]
-                         (list 'haul->boat->left-bank h state)) hs)
-                      (mapv
-                       (fn [h]
-                         (list 'haul->boat->right-bank h state)) hs))))
+              (concat (mapv (fn [h] #(haul->boat->left-bank h state)) hs)
+                      (mapv (fn [h] #(haul->boat->right-bank h state)) hs))))
     (throw (IllegalArgumentException. (str "Bad where: " where)))))
 
 (defn actions-from [[left-bank river right-bank :as state]]
   (cond
    (pos/on-left-bank? state) (conj (haul-actions-from :left-bank state)
-                                   (list 'move->left-bank->boat state))
+                                   #(move->left-bank->boat state))
    (pos/on-right-bank? state) (conj (haul-actions-from :right-bank state)
-                                    (list 'move->right-bank->boat state))
+                                    #(move->right-bank->boat state))
    (pos/on-boat? state) (conj (haul-actions-from :river state)
-                              (list 'move->boat->left-bank state)
-                              (list 'move->boat->right-bank state))
+                              #(move->boat->left-bank state)
+                              #(move->boat->right-bank state))
    :else (throw (IllegalArgumentException. "Missing :you"))))
+
+(defn act [action]
+  ;; An action is just a no-arg closure.
+  (action))
