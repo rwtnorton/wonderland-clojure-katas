@@ -23,21 +23,33 @@
 (defn haulables-all-together? [state]
   (some haulables-all-together-at? state))
 
+(defn state-as-sets [state]
+  (mapv set state))
+
+(defn state-as-vecs [state]
+  (mapv vec state))
+
 (defn step
   [queue]
   ;; Iteratively explore all valid actions
   ;; with all valid arguments until goal is reached.
-  (let [{:keys [state path] :or {path []}} (first queue)
-        ;; _ (clojure.pprint/pprint state)
+  (let [{:keys [state path] :or {path []} :as s} (first queue)
+        _ (clojure.pprint/pprint s)
         remaining (vec (rest queue))
         actions (acts/actions-from state)
         new-states (map acts/act actions)
+        new-states (remove states/fail? new-states)
+        new-states (vec
+                    (map state-as-vecs
+                         (clojure.set/difference
+                          (set (map state-as-sets new-states))
+                          (set (map state-as-sets path)))))
         new-path (conj path state)]
     (if (states/fail? state)
       remaining
       (into
        (->> new-states
-            (remove states/fail?)
+            ;; (remove states/fail?)
             (map (fn [s] {:state s, :path new-path}))
             vec)
        remaining))))
