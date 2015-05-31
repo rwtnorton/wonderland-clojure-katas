@@ -33,4 +33,4 @@
 
 (defn fail? [state]
   (or (fox-alone-with-goose? state)
-      (goose-alone-with-corn-at? state)))
+      (goose-alone-with-corn? state)))
