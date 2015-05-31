@@ -54,6 +54,34 @@
             vec)
        remaining))))
 
+;;
+;; Not quite what was desired for this exercise, I suspect, but
+;; maybe divide the effort into sub-goals:
+;;  * Haul goose to the right bank
+;;  * Haul fox and corn onto the boat
+;;  * Haul goose to the left bank
+;;  * Haul fox and corn onto the right bank
+;;  * Haul goose to the right bank
+;;
+
+(defn subgoal-goose-right-bank? [[left-bank river right-bank]]
+  (= (set right-bank) #{:you :goose}))
+
+(defn subgoal-fox-corn-on-boat? [[left-bank river right-bank]]
+  (and
+   (= (set river) #{:boat :you :corn :fox})
+   (= (set right-bank) #{:goose})))
+
+(defn subgoal-goose-left-bank? [[left-bank river right-bank]]
+  (and
+   (= (set left-bank) #{:goose :you})
+   (= (set river) #{:boat :corn :fox})))
+
+(defn subgoal-fox-corn-on-right-bank? [[left-bank river right-bank]]
+  (and
+   (= (set left-bank) #{:goose})
+   (= (set right-bank) #{:boat :you :corn :fox})))
+
 (defn river-crossing-plan []
   (->> [{:state states/start-state}]
        (iterate step)
@@ -62,3 +90,24 @@
        (filter (fn [{state :state}] (states/goal? state)))
        first
        :path))
+
+(defn river-crossing-plan-via-subgoals []
+  (let [goose-right
+        (->> [{:state states/start-state}]
+             (iterate step)
+             (filter (fn [{state :state}] (subgoal-goose-right-bank? state)))
+             first)]
+    goose-right))
+       ;; (iterate step)
+       ;; (filter (fn [{state :state}] (subgoal-fox-corn-on-boat? state)))
+       ;; first
+       ;; (iterate step)
+       ;; (filter (fn [{state :state}] (subgoal-goose-left-bank? state)))
+       ;; first
+       ;; (iterate step)
+       ;; (filter (fn [{state :state}] (subgoal-fox-corn-on-right-bank? state)))
+       ;; first
+       ;; (iterate step)
+       ;; (filter (fn [{state :state}] (states/goal? state)))
+       ;; first
+       ;; :path))
