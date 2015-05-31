@@ -2,6 +2,7 @@
   (:require [fox-goose-bag-of-corn.actions :as acts]
             [fox-goose-bag-of-corn.position :as pos]
             [fox-goose-bag-of-corn.states :as states]
+            [clojure.set]
             [clojure.pprint]))
 
 ;;
@@ -15,6 +16,12 @@
 ;; 5.) Might nudge goose to gravitate towards banks.
 ;; 6.) All things being equal, try to move all haulables toward right bank.
 ;;
+
+(defn haulables-all-together-at? [place]
+  (clojure.set/subset? #{:fox :goose :corn} (set place)))
+
+(defn haulables-all-together? [state]
+  (some haulables-all-together-at? state))
 
 (defn step
   [queue]
