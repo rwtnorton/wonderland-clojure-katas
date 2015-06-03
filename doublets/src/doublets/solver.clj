@@ -39,9 +39,10 @@
       (if-let [winner (some #(= % target-word) new-words)]
         (conj new-path target-word)
         (recur
-         (concat
-          next-queue
-          (map (fn [w] {:start-word w, :path new-path, :words words}) new-words))
+         (concat next-queue
+                 (map (fn [w] {:start-word w
+                               :path new-path
+                               :words words}) new-words))
          target-word)))))
 
 (defn doublets [word1 word2]
@@ -49,5 +50,5 @@
    (not-same-word-lengths? word1 word2) []
    (= word1 word2) []
    :else (let [words (words-of-length (count word1))]
-           (help-loop [{:start-word word1,:words words}]
+           (help-loop [{:start-word word1, :words words}]
                       word2))))
