@@ -11,13 +11,43 @@
 (defn words-of-length [n]
   (filter (fn [w] (= (count w) n)) words))
 
+(defn same-word-lengths? [word1 word2]
+  (= (count word1) (count word2)))
+
+(def not-same-word-lengths? (complement same-word-lengths?))
+
+(defn close-words? [word1 word2]
+  (if (not-same-word-lengths? word1 word2)
+    false
+    (<= (lev/levenshtein word1 word2) 1)))
+
+(defn next-words [{:keys [start-word path words] :or {path []}}]
+  (let [new-path (conj path start-word)
+        seen (set new-path)
+        close-words (->> words
+                         (filter (fn [w] (close-words? start-word w)))
+                         (remove seen))]
+    {:words close-words
+     :path new-path}))
+
+(defn help-loop [queue target-word]
+  (if (empty? queue)
+    []
+    (let [{:keys [start-word path words] :as arg} (first queue)
+          next-queue (rest queue)
+          {new-words :words, new-path :path} (next-words arg)]
+      (if-let [winner (some #(= % target-word) new-words)]
+        (conj new-path target-word)
+        (recur
+         (concat
+          next-queue
+          (map (fn [w] {:start-word w, :path new-path, :words words}) new-words))
+         target-word)))))
+
 (defn doublets [word1 word2]
   (cond
-   (not= (count word1) (count word2)) (throw
-                                       (IllegalArgumentException.
-                                        (str "Must have same lengths: "
-                                             word1 word2)))
+   (not-same-word-lengths? word1 word2) []
    (= word1 word2) []
-   :else (let [words (words-of-length (count word1))
-               ]
-           [word2])))
+   :else (let [words (words-of-length (count word1))]
+           (help-loop [{:start-word word1,:words words}]
+                      word2))))
