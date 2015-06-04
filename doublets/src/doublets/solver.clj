@@ -39,10 +39,10 @@
       (if-let [winner (some #(= % target-word) new-words)]
         (conj new-path target-word)
         (recur
-         (concat next-queue
-                 (map (fn [w] {:start-word w
-                               :path new-path
-                               :words words}) new-words))
+         (into next-queue
+               (map (fn [w] {:start-word w
+                             :path new-path
+                             :words words}) new-words))
          target-word)))))
 
 (defn doublets [word1 word2]
