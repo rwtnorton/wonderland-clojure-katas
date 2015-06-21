@@ -31,10 +31,11 @@
      :path new-path}))
 
 (defn help-loop [queue target-word]
+  ;; (clojure.pprint/pprint queue)
   (if (empty? queue)
     []
-    (let [{:keys [start-word path words] :as arg} (first queue)
-          next-queue (rest queue)
+    (let [{:keys [start-word path words] :as arg} (peek queue)
+          next-queue (pop queue)
           {new-words :words, new-path :path} (next-words arg)]
       (if-let [winner (some #(= % target-word) new-words)]
         (conj new-path target-word)
@@ -49,6 +50,7 @@
   (cond
    (not-same-word-lengths? word1 word2) []
    (= word1 word2) []
-   :else (let [words (words-of-length (count word1))]
-           (help-loop [{:start-word word1, :words words}]
-                      word2))))
+   :else (let [words (words-of-length (count word1))
+               queue (-> clojure.lang.PersistentQueue/EMPTY
+                         (conj {:start-word word1, :words words}))]
+           (help-loop queue word2))))
